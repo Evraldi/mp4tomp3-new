@@ -61,9 +61,8 @@ class DurationPickerDialogState extends State<DurationPickerDialog> {
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
       child: ConstrainedBox(
         constraints: BoxConstraints(
-          maxHeight:
-              MediaQuery.of(context).size.height *
-              0.43, // Reduced from 0.8 to 0.5 (80% to 50%)
+          maxHeight: MediaQuery.of(context).size.height *
+              (MediaQuery.of(context).size.shortestSide < 600 ? 0.8 : 0.55),
           maxWidth: MediaQuery.of(context).size.width * 0.9,
         ),
         child: Container(
@@ -118,24 +117,23 @@ class DurationPickerDialogState extends State<DurationPickerDialog> {
               ),
 
               // Content
+              // Content
               Expanded(
-                child: SingleChildScrollView(
-                  child: Padding(
-                    padding: const EdgeInsets.all(20),
-                    child: VideoTrimmer(
-                      videoPath: widget.videoPath!,
-                      initialStart: safeStart,
-                      initialEnd: safeEnd,
-                      onTrim: (value) {
-                        setState(() {
-                          _startTime = value.key;
-                          _endTime =
-                              value.value ??
-                              _startTime + const Duration(seconds: 30);
-                          _hasEndTime = value.value != null;
-                        });
-                      },
-                    ),
+                child: Padding(
+                  padding: const EdgeInsets.all(20),
+                  child: VideoTrimmer(
+                    videoPath: widget.videoPath!,
+                    initialStart: safeStart,
+                    initialEnd: safeEnd,
+                    onTrim: (value) {
+                      setState(() {
+                        _startTime = value.key;
+                        _endTime =
+                            value.value ??
+                            _startTime + const Duration(seconds: 30);
+                        _hasEndTime = value.value != null;
+                      });
+                    },
                   ),
                 ),
               ),

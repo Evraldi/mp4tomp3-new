@@ -105,49 +105,50 @@ class _VideoTrimmerState extends State<VideoTrimmer> {
   }
 
   Widget _buildVideoPlayer() {
-    return Container(
-      height: 240,
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.2),
-            blurRadius: 12,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(16),
-        child: Stack(
-          fit: StackFit.expand,
-          children: [
-            SizedBox.expand(
-              child: FittedBox(
-                fit: BoxFit.cover,
-                child: SizedBox(
-                  width: _controller.value.size?.width ?? 0,
-                  height: _controller.value.size?.height ?? 0,
-                  child: VideoPlayer(_controller),
-                ),
-              ),
-            ),
-
-            Positioned.fill(
-              child: Center(
-                child: IconButton(
-                  icon: Icon(
-                    _controller.value.isPlaying
-                        ? Icons.pause_circle_filled
-                        : Icons.play_circle_fill,
-                    color: Colors.white,
-                    size: 60,
-                  ),
-                  onPressed: _togglePlay,
-                ),
-              ),
+    return Expanded(
+      child: Container(
+        decoration: BoxDecoration(
+          color: Colors.black, // Add background color for letterboxing
+          borderRadius: BorderRadius.circular(16),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.2),
+              blurRadius: 12,
+              offset: const Offset(0, 4),
             ),
           ],
+        ),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(16),
+          child: Stack(
+            fit: StackFit.expand,
+            children: [
+              SizedBox.expand(
+                child: FittedBox(
+                  fit: BoxFit.contain, // Changed to contain
+                  child: SizedBox(
+                    width: _controller.value.size?.width ?? 0,
+                    height: _controller.value.size?.height ?? 0,
+                    child: VideoPlayer(_controller),
+                  ),
+                ),
+              ),
+              Positioned.fill(
+                child: Center(
+                  child: IconButton(
+                    icon: Icon(
+                      _controller.value.isPlaying
+                          ? Icons.pause_circle_filled
+                          : Icons.play_circle_fill,
+                      color: Colors.white,
+                      size: 60,
+                    ),
+                    onPressed: _togglePlay,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
