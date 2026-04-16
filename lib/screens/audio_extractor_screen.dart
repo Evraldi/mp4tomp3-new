@@ -1,25 +1,30 @@
+import 'dart:io';
 import 'dart:async';
 import 'package:file_picker/file_picker.dart';
 import 'package:flutter/material.dart';
 import '../services/storage_service.dart';
 import '../services/notification_service.dart';
 import '../services/conversion_service.dart';
+import '../services/ffmpeg_service.dart';
 import '../utils/format_options.dart';
+import 'package:path_provider/path_provider.dart';
+import '../utils/app_logger.dart';
 import '../widgets/duration_picker_dialog.dart';
 import '../widgets/format_quality_selector.dart';
 import '../widgets/convert_button_section.dart';
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class AudioExtractorScreen extends StatefulWidget {
+  const AudioExtractorScreen({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<AudioExtractorScreen> createState() => _AudioExtractorScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _AudioExtractorScreenState extends State<AudioExtractorScreen> {
   final StorageService _storageService = StorageService();
   final NotificationService _notificationService = NotificationService();
   final ConversionService _conversionService = ConversionService();
+  // FFMpegService methods are used statically below
 
   bool _isLoading = false;
 
@@ -33,6 +38,8 @@ class _HomeScreenState extends State<HomeScreen> {
   Duration? _endTime;
   bool _hasEndTime = false;
   String? _selectedVideoPath;
+  String? _thumbnailPath;
+  bool _isGeneratingThumbnail = false;
 
   @override
   void initState() {
@@ -52,11 +59,9 @@ class _HomeScreenState extends State<HomeScreen> {
 
   // Single handler for notification taps
   void _handleNotificationTap(String? filePath) {
-    if (filePath != null) {
-      _storageService.openFileDirectory(filePath).catchError((e) {
-        _showSnackBar('Gagal membuka direktori: $e');
-      });
-    }
+    // Diputuskan untuk tidak membuat notifikasi bisa diklik karena kendala izin 
+    // keamanan Android pada folder sistem/SD card.
+    AppLogger.info('Notification tapped, but action is disabled.');
   }
 
   Future<void> _showDurationPicker() async {
@@ -86,12 +91,20 @@ class _HomeScreenState extends State<HomeScreen> {
       _endTime = null;
       _hasEndTime = false;
       _selectedVideoPath = null;
+      _thumbnailPath = null;
     });
   }
 
   // Clean conversion handler - ConversionService handles everything
   Future<void> _handleConversion() async {
     if (!_validateConversion()) return;
+
+    // Pastikan izin penyimpanan sudah diberikan
+    final hasPermission = await _storageService.requestFullStoragePermission();
+    if (!hasPermission) {
+      _showSnackBar('Izin penyimpanan diperlukan untuk menyimpan hasil konversi');
+      return;
+    }
 
     setState(() => _isLoading = true);
 
@@ -161,7 +174,20 @@ class _HomeScreenState extends State<HomeScreen> {
 
       setState(() {
         _selectedVideoPath = file.path!;
+        _isGeneratingThumbnail = true;
       });
+
+      // Generate thumbnail
+      final tempDir = await getTemporaryDirectory();
+      final thumbPath = '${tempDir.path}/thumb_${DateTime.now().millisecondsSinceEpoch}.jpg';
+      final success = await FFMpegService.generateThumbnail(_selectedVideoPath!, thumbPath);
+      
+      if (mounted) {
+        setState(() {
+          if (success) _thumbnailPath = thumbPath;
+          _isGeneratingThumbnail = false;
+        });
+      }
 
       await _showDurationPicker();
     } catch (e) {
@@ -295,16 +321,93 @@ class _HomeScreenState extends State<HomeScreen> {
   }
 
   Widget _buildConvertSection() {
-    return ConvertButtonSection(
-      isLoading: _isLoading,
-      onPickVideo: _pickAndConvertFiles,
-      onShowDurationPicker: _showDurationPicker,
-      onClearDuration: _clearDurationSelection,
-      onConvert: _handleConversion,
-      startTime: _startTime,
-      endTime: _endTime,
-      hasEndTime: _hasEndTime,
-      videoPath: _selectedVideoPath,
+    final theme = Theme.of(context);
+    return Column(
+      children: [
+        if (_selectedVideoPath != null)
+          _buildSelectedVideoCard(_selectedVideoPath!, theme),
+        const SizedBox(height: 16),
+        ConvertButtonSection(
+          isLoading: _isLoading,
+          onPickVideo: _pickAndConvertFiles,
+          onShowDurationPicker: _showDurationPicker,
+          onClearDuration: _clearDurationSelection,
+          onConvert: _handleConversion,
+          startTime: _startTime,
+          endTime: _endTime,
+          hasEndTime: _hasEndTime,
+          videoPath: _selectedVideoPath,
+        ),
+      ],
     );
+  }
+
+  Widget _buildSelectedVideoCard(String filePath, ThemeData theme) {
+    final fileName = filePath.split('/').last;
+    
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Row(
+          children: [
+            // Thumbnail container
+            Container(
+              width: 80,
+              height: 80,
+              decoration: BoxDecoration(
+                color: theme.colorScheme.surfaceContainerHighest,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              clipBehavior: Clip.antiAlias,
+              child: _buildThumbnailWidget(),
+            ),
+            const SizedBox(width: 12),
+            // File info
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    fileName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: theme.textTheme.titleSmall?.copyWith(fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    'Video File',
+                    style: theme.textTheme.bodySmall,
+                  ),
+                ],
+              ),
+            ),
+            // Clear button
+            IconButton(
+              icon: const Icon(Icons.close),
+              onPressed: _clearDurationSelection,
+              tooltip: 'Remove',
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildThumbnailWidget() {
+    if (_isGeneratingThumbnail) {
+      return const Center(child: SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2)));
+    }
+    
+    if (_thumbnailPath != null) {
+      return Image.file(
+        File(_thumbnailPath!),
+        fit: BoxFit.cover,
+        errorBuilder: (context, error, stackTrace) => const Icon(Icons.movie),
+      );
+    }
+    
+    return const Icon(Icons.movie);
   }
 }

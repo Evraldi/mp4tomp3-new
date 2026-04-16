@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter/foundation.dart';
 import 'dart:async';
-import 'screens/home_screen.dart';
+import 'screens/main_menu_screen.dart';
 import 'services/notification_service.dart';
 import 'utils/app_logger.dart';
 
@@ -65,7 +65,7 @@ class MyApp extends StatelessWidget {
         useMaterial3: true,
         appBarTheme: const AppBarTheme(centerTitle: true, elevation: 0),
       ),
-      home: const HomeScreen(),
+      home: const MainMenuScreen(),
       builder: (context, child) {
         ErrorWidget.builder = (FlutterErrorDetails errorDetails) {
           AppLogger.error(

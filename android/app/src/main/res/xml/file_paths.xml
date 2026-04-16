@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<paths xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- Mengizinkan akses ke seluruh penyimpanan eksternal (Music, Movies, Downloads, dll) -->
+    <external-path name="external_storage" path="." />
+    <!-- Backup untuk folder spesifik aplikasi -->
+    <external-files-path name="external_files" path="." />
+</paths>

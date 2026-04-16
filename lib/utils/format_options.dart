@@ -36,3 +36,43 @@ const List<Map<String, dynamic>> audioFormatOptions = [
     ],
   },
 ];
+
+// List of supported video formats
+const List<Map<String, dynamic>> videoFormatOptions = [
+  {
+    'name': 'MP4',
+    'extension': 'mp4',
+  },
+  {
+    'name': 'MKV',
+    'extension': 'mkv',
+  },
+  {
+    'name': 'AVI',
+    'extension': 'avi',
+  },
+];
+
+// List of supported video compression options
+const List<Map<String, dynamic>> videoCompressionOptions = [
+  {
+    'name': '1080p (High Quality)',
+    'resolution': '1920:1080',
+    'crf': '23',
+  },
+  {
+    'name': '720p (Good Quality)',
+    'resolution': '1280:720',
+    'crf': '28',
+  },
+  {
+    'name': '480p (Medium Quality / Smaller Size)',
+    'resolution': '854:480',
+    'crf': '32',
+  },
+  {
+    'name': '360p (Low Quality / Smallest Size)',
+    'resolution': '640:360',
+    'crf': '35',
+  },
+];

@@ -1,5 +1,6 @@
-import 'dart:io' show Platform, Directory, File, FileSystemEntity;
+import 'dart:io' show Platform, Directory, File;
 import 'package:path/path.dart' as path;
+import 'package:path_provider/path_provider.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:open_filex/open_filex.dart';
 import 'package:android_intent_plus/android_intent.dart';
@@ -13,29 +14,35 @@ class StorageService {
   factory StorageService() => _instance;
   StorageService._internal();
 
-  Future<Directory> getAppDocumentsDirectory() async {
-    if (_cachedOutputDirectory != null) return _cachedOutputDirectory!;
-
+  Future<Directory> getAppDocumentsDirectory(String mediaType) async {
     try {
-      final directory = Directory('/storage/emulated/0/Music/MP4ToMP3');
-      AppLogger.debug('Checking directory: ${directory.path}');
+      Directory? baseDir;
+      String folderName = 'MP4ToMP3';
 
-      if (!await Permission.storage.isGranted) {
-        final status = await Permission.storage.request();
-        if (!status.isGranted) {
-          throw Exception('Izin penyimpanan tidak diberikan');
+      if (Platform.isAndroid) {
+        // Request MANAGE_EXTERNAL_STORAGE specifically for system folders access if needed
+        // but for now we try to use the public paths directly.
+        if (await Permission.manageExternalStorage.isGranted || await Permission.storage.isGranted) {
+           baseDir = Directory('/storage/emulated/0/$mediaType');
+        } else {
+           // Fallback if permissions not granted yet
+           baseDir = await getExternalStorageDirectory();
         }
+      } else {
+        baseDir = await getApplicationDocumentsDirectory();
       }
+
+      final directory = Directory('${baseDir?.path ?? ""}/$folderName');
+      AppLogger.debug('Output directory for $mediaType: ${directory.path}');
 
       if (!await directory.exists()) {
         AppLogger.info('Creating directory: ${directory.path}');
         await directory.create(recursive: true);
       }
 
-      _cachedOutputDirectory = directory;
       return directory;
     } catch (e, stackTrace) {
-      AppLogger.error('Error accessing app documents directory', e, stackTrace);
+      AppLogger.error('Error accessing storage directory for $mediaType', e, stackTrace);
       rethrow;
     }
   }
@@ -43,78 +50,47 @@ class StorageService {
   Future<String> getOutputPath(
     String inputPath,
     String format,
-    String bitrate,
-  ) async {
-    final dir = await getAppDocumentsDirectory();
+    String bitrate, {
+    String mediaType = 'Music',
+  }) async {
+    final dir = await getAppDocumentsDirectory(mediaType);
     final baseName = path.basenameWithoutExtension(inputPath);
-    final qualitySuffix = ' ($bitrate)';
-    return '${dir.path}/$baseName$qualitySuffix.$format';
+    // Sanitize baseName and bitrate for filename safety
+    final cleanBaseName = baseName.replaceAll(RegExp(r'[^\w\s-]'), '');
+    final cleanBitrate = bitrate.replaceAll(RegExp(r'[^\w\s-]'), '');
+    
+    return '${dir.path}/${cleanBaseName}_${cleanBitrate}.$format';
+  }
+
+  Future<bool> requestFullStoragePermission() async {
+    if (Platform.isAndroid) {
+      if (await Permission.manageExternalStorage.isGranted) return true;
+      final status = await Permission.manageExternalStorage.request();
+      return status.isGranted;
+    }
+    return true;
+  }
+
+  Future<void> openFileDirectory(String filePath) async {
+    // Redirect to openFile because opening directories is too restricted on modern Android
+    return openFile(filePath);
   }
 
   Future<void> openFile(String filePath) async {
     try {
-      final result = await OpenFilex.open(filePath);
-      if (result.type != ResultType.done) {
-        throw Exception('Gagal membuka file');
+      final file = File(filePath);
+      if (!await file.exists()) {
+        throw Exception('File tidak ditemukan: $filePath');
       }
-    } catch (e) {
-      AppLogger.error('Error opening file', e);
-      rethrow;
-    }
-  }
 
-  Future<void> openFileDirectory(String filePath) async {
-    try {
-      final directory = path.dirname(filePath);
-      AppLogger.debug('Opening directory: $directory');
-
-      if (Platform.isAndroid) {
-        try {
-          // Try using OpenFilex first
-          final result = await OpenFilex.open(
-            directory,
-            type: 'resource/folder',
-            uti: 'public.folder',
-          );
-
-          if (result.type != ResultType.done) {
-            // Fallback to using the system's file manager
-            final intent = AndroidIntent(
-              action: 'android.intent.action.VIEW',
-              data: Uri.file(directory).toString(),
-              type: 'resource/folder',
-              flags: <int>[
-                Flag.FLAG_ACTIVITY_NEW_TASK,
-                Flag.FLAG_GRANT_READ_URI_PERMISSION,
-              ],
-            );
-            await intent.launch();
-          }
-        } catch (e) {
-          AppLogger.error('Error opening directory', e);
-          // Final fallback - try to open the parent directory
-          final parentDir = Directory(directory).parent;
-          if (await parentDir.exists()) {
-            await OpenFilex.open(
-              parentDir.path,
-              type: 'resource/folder',
-              uti: 'public.folder',
-            );
-          }
-        }
-      } else {
-        // Platform non Android
-        final result = await OpenFilex.open(
-          directory,
-          type: 'resource/folder',
-          uti: 'public/folder',
-        );
-        if (result.type != ResultType.done) {
-          throw Exception('Gagal membuka direktori');
-        }
+      AppLogger.debug('Opening file: $filePath');
+      final result = await OpenFilex.open(filePath);
+      
+      if (result.type != ResultType.done) {
+        throw Exception(result.message);
       }
     } catch (e, stackTrace) {
-      AppLogger.error('Error in openFileDirectory', e, stackTrace);
+      AppLogger.error('Error in openFile', e, stackTrace);
       rethrow;
     }
   }

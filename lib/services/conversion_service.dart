@@ -33,6 +33,7 @@ class ConversionService {
       inputPath,
       format,
       bitrate,
+      mediaType: 'Music',
     );
 
     final task = ConversionTask(
@@ -94,6 +95,136 @@ class ConversionService {
     }
   }
 
+  Future<void> convertAudioOrVideo(
+    String inputPath, {
+    required String format,
+    required String type, // 'audio' or 'video'
+    String bitrate = '192k',
+  }) async {
+    final outputPath = await _storageService.getOutputPath(
+      inputPath,
+      format,
+      type == 'video' ? 'video' : bitrate,
+      mediaType: type == 'video' ? 'Movies' : 'Music',
+    );
+
+    final task = ConversionTask(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      inputPath: inputPath,
+      outputPath: outputPath,
+      format: format,
+      bitrate: type == 'video' ? 'auto' : bitrate,
+      progress: 0,
+      status: ConversionStatus.queued,
+    );
+
+    _addTask(task);
+
+    try {
+      bool success;
+      if (type == 'video') {
+         success = await FFMpegService.convertVideo(
+          inputPath: inputPath,
+          outputPath: outputPath,
+          format: format,
+          onProgress: (progress) {
+            task.progress = (progress * 100).toInt();
+            task.status = ConversionStatus.converting;
+            _updateTask(task);
+          },
+          onLog: (log) => AppLogger.info('FFmpeg Video: $log'),
+        );
+      } else {
+        success = await FFMpegService.convertAudio(
+          inputPath: inputPath,
+          outputPath: outputPath,
+          format: format,
+          bitrate: bitrate,
+          onProgress: (progress) {
+            task.progress = (progress * 100).toInt();
+            task.status = ConversionStatus.converting;
+            _updateTask(task);
+          },
+          onLog: (log) => AppLogger.info('FFmpeg Audio: $log'),
+        );
+      }
+
+      if (!success) {
+        throw Exception('Conversion failed');
+      }
+
+      task.outputPath = outputPath;
+      task.progress = 100;
+      task.status = ConversionStatus.completed;
+      _updateTask(task);
+
+      await _showSuccessNotification(outputPath, format);
+    } catch (e) {
+      task.status = ConversionStatus.failed;
+      task.error = e.toString();
+      _updateTask(task);
+      await _showErrorNotification(e.toString());
+      rethrow;
+    }
+  }
+
+  Future<void> compressVideo(
+    String inputPath, {
+    required String resolution,
+    required String crf,
+  }) async {
+    final outputPath = await _storageService.getOutputPath(
+      inputPath,
+      'mp4',
+      'compressed_$resolution',
+      mediaType: 'Movies',
+    );
+
+    final task = ConversionTask(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      inputPath: inputPath,
+      outputPath: outputPath,
+      format: 'mp4 (compressed)',
+      bitrate: 'crf $crf',
+      progress: 0,
+      status: ConversionStatus.queued,
+    );
+
+    _addTask(task);
+
+    try {
+      final success = await FFMpegService.compressVideo(
+        inputPath: inputPath,
+        outputPath: outputPath,
+        resolution: resolution,
+        crf: crf,
+        onProgress: (progress) {
+          task.progress = (progress * 100).toInt();
+          task.status = ConversionStatus.converting;
+          _updateTask(task);
+        },
+        onLog: (log) => AppLogger.info('FFmpeg Compress: $log'),
+      );
+
+      if (!success) {
+        throw Exception('Compression failed');
+      }
+
+      task.outputPath = outputPath;
+      task.progress = 100;
+      task.status = ConversionStatus.completed;
+      _updateTask(task);
+
+      await _showSuccessNotification(outputPath, 'compressed mp4');
+    } catch (e) {
+      task.status = ConversionStatus.failed;
+      task.error = e.toString();
+      _updateTask(task);
+      await _showErrorNotification(e.toString());
+      rethrow;
+    }
+  }
+
   Future<void> _showSuccessNotification(
     String outputPath,
     String format,
@@ -103,7 +234,7 @@ class ConversionService {
         id: _notificationIdSuccess,
         title: 'Konversi Selesai',
         body: 'Video berhasil dikonversi ke ${format.toUpperCase()}',
-        payload: outputPath,
+        payload: null, // Disable click action
       );
     } catch (e, stackTrace) {
       AppLogger.error('Failed to show success notification', e, stackTrace);
