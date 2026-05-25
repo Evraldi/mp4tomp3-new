@@ -67,7 +67,7 @@ class ConvertButtonSection extends StatelessWidget {
                       )
                     : const Icon(Icons.video_library, size: 20),
                 label: Text(
-                  isLoading ? 'Mengkonversi...' : 'Pilih Video',
+                  isLoading ? 'Converting...' : 'Select Video',
                   style: const TextStyle(
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
@@ -168,7 +168,7 @@ class ConvertButtonSection extends StatelessWidget {
                     ),
                   ),
                   icon: const Icon(Icons.play_arrow, size: 16),
-                  label: const Text('Konversi'),
+                  label: const Text('Convert'),
                 ),
               ],
             ],

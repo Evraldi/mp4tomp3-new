@@ -13,6 +13,7 @@ class NotificationService {
 
   late FlutterLocalNotificationsPlugin _notifications;
   Function(String?)? _onNotificationTapped;
+  bool _isInitialized = false;
 
   NotificationService._internal();
 
@@ -23,8 +24,9 @@ class NotificationService {
   }
 
   Future<void> initialize() async {
+    if (_isInitialized) return;
     try {
-      AppLogger.debug('Menginisialisasi notifikasi...');
+      AppLogger.debug('Initializing notifications...');
       _notifications = FlutterLocalNotificationsPlugin();
       tz.initializeTimeZones();
 
@@ -58,9 +60,10 @@ class NotificationService {
               playSound: true,
             ),
           );
+          
+      _isInitialized = true;
     } catch (e, stackTrace) {
-      AppLogger.error('Gagal menginisialisasi notifikasi', e, stackTrace);
-      rethrow;
+      AppLogger.error('Failed to initialize notifications', e, stackTrace);
     }
   }
 
@@ -159,7 +162,7 @@ Lokasi: $fileDir
       styleInformation: BigTextStyleInformation(
         body,
         contentTitle: title,
-        summaryText: 'Konversi Selesai',
+        summaryText: 'Conversion Completed',
         htmlFormatBigText: true,
       ),
     );
@@ -177,9 +180,9 @@ Lokasi: $fileDir
         notification,
         payload: payload,
       );
-      AppLogger.debug('[NOTIF] Notifikasi berhasil ditampilkan - ID: $id');
+      AppLogger.debug('[NOTIF] Notification displayed successfully - ID: $id');
     } catch (e, stackTrace) {
-      AppLogger.error('Gagal menampilkan notifikasi', e, stackTrace);
+      AppLogger.error('Failed to display notification', e, stackTrace);
     }
   }
 
@@ -200,7 +203,7 @@ Lokasi: $fileDir
         ticker: 'Conversion Complete',
         payload: payload,
       );
-      AppLogger.debug('showCompletionNotification berhasil dipanggil');
+      AppLogger.debug('showCompletionNotification called successfully');
     } catch (e, stackTrace) {
       AppLogger.error('Error di showCompletionNotification', e, stackTrace);
       rethrow;

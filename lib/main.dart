@@ -18,15 +18,17 @@ void main() {
       AppLogger.info('Starting application...');
 
       AppLogger.verbose('Setting preferred orientations');
-      await SystemChrome.setPreferredOrientations([
+      SystemChrome.setPreferredOrientations([
         DeviceOrientation.portraitUp,
         DeviceOrientation.portraitDown,
       ]);
 
-      AppLogger.verbose('Initializing notification service');
-      final notificationService = NotificationService();
-      await notificationService.initialize();
-      AppLogger.info('Notification service initialized');
+      // Run notification initialization async to avoid blocking the first frame render
+      Future.microtask(() async {
+        AppLogger.verbose('Initializing notification service');
+        await NotificationService().initialize();
+        AppLogger.info('Notification service initialized asynchronously');
+      });
 
       FlutterError.onError = (details) {
         FlutterError.presentError(details);

@@ -53,7 +53,7 @@ class _AudioExtractorScreenState extends State<AudioExtractorScreen> {
       await _notificationService.initialize();
       _notificationService.setOnNotificationTapped(_handleNotificationTap);
     } catch (e) {
-      _showSnackBar('Gagal menginisialisasi: $e');
+      _showSnackBar('Failed to initialize: $e');
     }
   }
 
@@ -66,7 +66,7 @@ class _AudioExtractorScreenState extends State<AudioExtractorScreen> {
 
   Future<void> _showDurationPicker() async {
     if (_selectedVideoPath == null) {
-      _showSnackBar('Pilih video terlebih dahulu');
+      _showSnackBar('Please select a video first');
       return;
     }
 
@@ -102,7 +102,7 @@ class _AudioExtractorScreenState extends State<AudioExtractorScreen> {
     // Pastikan izin penyimpanan sudah diberikan
     final hasPermission = await _storageService.requestFullStoragePermission();
     if (!hasPermission) {
-      _showSnackBar('Izin penyimpanan diperlukan untuk menyimpan hasil konversi');
+      _showSnackBar('Storage permission is required to save the converted file');
       return;
     }
 
@@ -121,13 +121,13 @@ class _AudioExtractorScreenState extends State<AudioExtractorScreen> {
       // ConversionService already shows notification
       // Just show local feedback
       if (mounted) {
-        _showSnackBar('Konversi berhasil!');
+        _showSnackBar('Conversion completed!');
       }
     } catch (e) {
       // ConversionService already shows error notification
       // Just show local feedback
       if (mounted) {
-        _showSnackBar('Gagal mengkonversi: $e');
+        _showSnackBar('Failed to convert: $e');
       }
     } finally {
       if (mounted) {
@@ -139,7 +139,7 @@ class _AudioExtractorScreenState extends State<AudioExtractorScreen> {
   // Validation logic extracted
   bool _validateConversion() {
     if (_selectedVideoPath == null) {
-      _showSnackBar('Pilih video terlebih dahulu');
+      _showSnackBar('Please select a video first');
       return false;
     }
 
@@ -191,7 +191,7 @@ class _AudioExtractorScreenState extends State<AudioExtractorScreen> {
 
       await _showDurationPicker();
     } catch (e) {
-      _showSnackBar('Gagal memilih file: $e');
+      _showSnackBar('Failed to pick file: $e');
     }
   }
 

@@ -80,11 +80,53 @@ class StorageService {
     try {
       final file = File(filePath);
       if (!await file.exists()) {
-        throw Exception('File tidak ditemukan: $filePath');
+        throw Exception('File not found: $filePath');
       }
 
-      AppLogger.debug('Opening file: $filePath');
-      final result = await OpenFilex.open(filePath);
+      String? mimeType;
+      final ext = path.extension(filePath).toLowerCase();
+      if (['.jpg', '.jpeg'].contains(ext)) mimeType = 'image/jpeg';
+      else if (ext == '.png') mimeType = 'image/png';
+      else if (ext == '.webp') mimeType = 'image/webp';
+      else if (ext == '.gif') mimeType = 'image/gif';
+      else if (ext == '.bmp') mimeType = 'image/bmp';
+      else if (ext == '.mp4') mimeType = 'video/mp4';
+      else if (ext == '.mkv') mimeType = 'video/x-matroska';
+      else if (ext == '.avi') mimeType = 'video/x-msvideo';
+      else if (ext == '.mp3') mimeType = 'audio/mpeg';
+      else if (ext == '.m4a') mimeType = 'audio/mp4';
+      else if (ext == '.wav') mimeType = 'audio/x-wav';
+      else if (ext == '.ogg') mimeType = 'audio/ogg';
+
+      AppLogger.debug('Opening file: $filePath with mimeType: $mimeType');
+      
+      if (Platform.isAndroid && filePath.startsWith('/storage/emulated/0/')) {
+        final relativePath = filePath.replaceFirst('/storage/emulated/0/', '');
+        final contentUri = 'content://com.example.mp4tomp3.fileProvider/external_storage/$relativePath';
+        
+        final intent = AndroidIntent(
+          action: 'action_view',
+          data: contentUri,
+          type: mimeType,
+          flags: <int>[
+            Flag.FLAG_GRANT_READ_URI_PERMISSION,
+            Flag.FLAG_ACTIVITY_NEW_TASK,
+          ],
+        );
+        
+        try {
+          await intent.launch();
+          AppLogger.debug('Launched intent successfully via android_intent_plus');
+          return;
+        } catch (e) {
+          AppLogger.error('Failed to launch manual intent', e, null);
+          // Fallback to open_filex if it fails
+        }
+      }
+
+      final result = mimeType != null 
+          ? await OpenFilex.open(filePath, type: mimeType)
+          : await OpenFilex.open(filePath);
       
       if (result.type != ResultType.done) {
         throw Exception(result.message);
@@ -94,4 +136,33 @@ class StorageService {
       rethrow;
     }
   }
+
+  Future<List<File>> getAllConvertedFiles() async {
+    List<File> allFiles = [];
+    final mediaTypes = ['Music', 'Movies', 'Pictures'];
+    
+    for (var type in mediaTypes) {
+      try {
+        final dir = await getAppDocumentsDirectory(type);
+        if (await dir.exists()) {
+          final files = dir.listSync().whereType<File>().toList();
+          allFiles.addAll(files);
+        }
+      } catch (e) {
+        AppLogger.error('Error reading dir $type', e, null);
+      }
+    }
+    
+    // Sort by modified time descending (newest first)
+    allFiles.sort((a, b) {
+      try {
+        return b.lastModifiedSync().compareTo(a.lastModifiedSync());
+      } catch (_) {
+        return 0;
+      }
+    });
+
+    return allFiles;
+  }
 }
+

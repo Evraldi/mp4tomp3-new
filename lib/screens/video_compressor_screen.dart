@@ -39,7 +39,7 @@ class _VideoCompressorScreenState extends State<VideoCompressorScreen> {
       await _notificationService.initialize();
       _notificationService.setOnNotificationTapped(_handleNotificationTap);
     } catch (e) {
-      _showSnackBar('Gagal menginisialisasi: $e');
+      _showSnackBar('Failed to initialize: $e');
     }
   }
 
@@ -73,20 +73,20 @@ class _VideoCompressorScreenState extends State<VideoCompressorScreen> {
         });
       }
     } catch (e) {
-      _showSnackBar('Gagal memilih file: $e');
+      _showSnackBar('Failed to pick file: $e');
     }
   }
 
   Future<void> _handleCompression() async {
     if (_selectedVideoPath == null) {
-      _showSnackBar('Pilih video terlebih dahulu');
+      _showSnackBar('Please select a video first');
       return;
     }
 
     // Pastikan izin penyimpanan sudah diberikan
     final hasPermission = await _storageService.requestFullStoragePermission();
     if (!hasPermission) {
-      _showSnackBar('Izin penyimpanan diperlukan untuk menyimpan hasil konversi');
+      _showSnackBar('Storage permission is required to save the compressed file');
       return;
     }
 
@@ -99,9 +99,9 @@ class _VideoCompressorScreenState extends State<VideoCompressorScreen> {
         resolution: option['resolution'] as String,
         crf: option['crf'] as String,
       );
-      if (mounted) _showSnackBar('Kompresi dimulai...');
+      if (mounted) _showSnackBar('Compression started...');
     } catch (e) {
-      if (mounted) _showSnackBar('Gagal mengkompresi: $e');
+      if (mounted) _showSnackBar('Failed to compress: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }

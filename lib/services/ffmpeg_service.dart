@@ -140,6 +140,60 @@ class FFMpegService {
     }
   }
 
+  static Future<bool> convertImage({
+    required String inputPath,
+    required String outputPath,
+    required String format,
+    required Function(double progress) onProgress,
+    required Function(String log) onLog,
+  }) async {
+    try {
+      String command = '-y -i "$inputPath" ';
+      
+      switch (format.toLowerCase()) {
+        case 'jpg':
+        case 'jpeg':
+          command += '-q:v 2 "$outputPath"'; // high quality
+          break;
+        case 'png':
+          command += '"$outputPath"';
+          break;
+        case 'webp':
+          command += '-q:v 80 "$outputPath"'; // good quality webp
+          break;
+        case 'gif':
+          command += '"$outputPath"';
+          break;
+        default:
+          command += '"$outputPath"';
+      }
+
+      onLog('Executing Image Convert: $command');
+      return await _executeCommand(command, onProgress, onLog);
+    } catch (e, stackTrace) {
+      onLog('Error during image conversion: $e\n$stackTrace');
+      return false;
+    }
+  }
+
+  static Future<bool> compressImage({
+    required String inputPath,
+    required String outputPath,
+    required String scale,
+    required String quality,
+    required Function(double progress) onProgress,
+    required Function(String log) onLog,
+  }) async {
+    try {
+      final command = '-y -i "$inputPath" -vf "scale=$scale" -q:v $quality "$outputPath"';
+      onLog('Executing Image Compress: $command');
+      return await _executeCommand(command, onProgress, onLog);
+    } catch (e, stackTrace) {
+      onLog('Error during image compression: $e\n$stackTrace');
+      return false;
+    }
+  }
+
   static Future<bool> _executeCommand(
     String command, 
     Function(double progress) onProgress, 

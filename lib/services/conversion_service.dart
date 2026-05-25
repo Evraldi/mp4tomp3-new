@@ -79,7 +79,7 @@ class ConversionService {
       onProgress?.call(task);
 
       // Show success notification
-      await _showSuccessNotification(outputPath, format);
+      await _showSuccessNotification(outputPath, format, mediaLabel: 'Audio');
     } catch (e, stackTrace) {
       AppLogger.error('Error during conversion', e, stackTrace);
 
@@ -158,7 +158,119 @@ class ConversionService {
       task.status = ConversionStatus.completed;
       _updateTask(task);
 
-      await _showSuccessNotification(outputPath, format);
+      await _showSuccessNotification(outputPath, format, mediaLabel: type == 'video' ? 'Video' : 'Audio');
+    } catch (e) {
+      task.status = ConversionStatus.failed;
+      task.error = e.toString();
+      _updateTask(task);
+      await _showErrorNotification(e.toString());
+      rethrow;
+    }
+  }
+
+  Future<void> convertImage(
+    String inputPath, {
+    required String format,
+  }) async {
+    final outputPath = await _storageService.getOutputPath(
+      inputPath,
+      format,
+      'image',
+      mediaType: 'Pictures',
+    );
+
+    final task = ConversionTask(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      inputPath: inputPath,
+      outputPath: outputPath,
+      format: format,
+      bitrate: 'auto',
+      progress: 0,
+      status: ConversionStatus.queued,
+    );
+
+    _addTask(task);
+
+    try {
+      final success = await FFMpegService.convertImage(
+        inputPath: inputPath,
+        outputPath: outputPath,
+        format: format,
+        onProgress: (progress) {
+          task.progress = (progress * 100).toInt();
+          task.status = ConversionStatus.converting;
+          _updateTask(task);
+        },
+        onLog: (log) => AppLogger.info('FFmpeg Image: $log'),
+      );
+
+      if (!success) {
+        throw Exception('Conversion failed');
+      }
+
+      task.outputPath = outputPath;
+      task.progress = 100;
+      task.status = ConversionStatus.completed;
+      _updateTask(task);
+
+      await _showSuccessNotification(outputPath, format, mediaLabel: 'Gambar');
+    } catch (e) {
+      task.status = ConversionStatus.failed;
+      task.error = e.toString();
+      _updateTask(task);
+      await _showErrorNotification(e.toString());
+      rethrow;
+    }
+  }
+
+  Future<void> compressImage(
+    String inputPath, {
+    required String scale,
+    required String quality,
+  }) async {
+    final outputPath = await _storageService.getOutputPath(
+      inputPath,
+      'jpg',
+      'compressed_$quality',
+      mediaType: 'Pictures',
+    );
+
+    final task = ConversionTask(
+      id: DateTime.now().millisecondsSinceEpoch.toString(),
+      inputPath: inputPath,
+      outputPath: outputPath,
+      format: 'jpg (compressed)',
+      bitrate: 'q$quality',
+      progress: 0,
+      status: ConversionStatus.queued,
+    );
+
+    _addTask(task);
+
+    try {
+      final success = await FFMpegService.compressImage(
+        inputPath: inputPath,
+        outputPath: outputPath,
+        scale: scale,
+        quality: quality,
+        onProgress: (progress) {
+          task.progress = (progress * 100).toInt();
+          task.status = ConversionStatus.converting;
+          _updateTask(task);
+        },
+        onLog: (log) => AppLogger.info('FFmpeg Compress Image: $log'),
+      );
+
+      if (!success) {
+        throw Exception('Compression failed');
+      }
+
+      task.outputPath = outputPath;
+      task.progress = 100;
+      task.status = ConversionStatus.completed;
+      _updateTask(task);
+
+      await _showSuccessNotification(outputPath, 'compressed image', mediaLabel: 'Gambar');
     } catch (e) {
       task.status = ConversionStatus.failed;
       task.error = e.toString();
@@ -227,13 +339,14 @@ class ConversionService {
 
   Future<void> _showSuccessNotification(
     String outputPath,
-    String format,
-  ) async {
+    String format, {
+    String mediaLabel = 'Video',
+  }) async {
     try {
       await _notificationService.showCompletionNotification(
         id: _notificationIdSuccess,
-        title: 'Konversi Selesai',
-        body: 'Video berhasil dikonversi ke ${format.toUpperCase()}',
+        title: 'Conversion Completed',
+        body: '$mediaLabel successfully converted to ${format.toUpperCase()}',
         payload: null, // Disable click action
       );
     } catch (e, stackTrace) {
@@ -246,7 +359,7 @@ class ConversionService {
     try {
       await _notificationService.showErrorNotification(
         id: _notificationIdError,
-        title: 'Konversi Gagal',
+        title: 'Conversion Failed',
         error: error,
       );
     } catch (e, stackTrace) {

@@ -76,3 +76,51 @@ const List<Map<String, dynamic>> videoCompressionOptions = [
     'crf': '35',
   },
 ];
+
+// List of supported image formats
+const List<Map<String, dynamic>> imageFormatOptions = [
+  {
+    'name': 'JPG',
+    'extension': 'jpg',
+  },
+  {
+    'name': 'PNG',
+    'extension': 'png',
+  },
+  {
+    'name': 'WEBP',
+    'extension': 'webp',
+  },
+  {
+    'name': 'GIF',
+    'extension': 'gif',
+  },
+  {
+    'name': 'BMP',
+    'extension': 'bmp',
+  },
+];
+
+// List of supported image compression options
+const List<Map<String, dynamic>> imageCompressionOptions = [
+  {
+    'name': 'High Quality (HD)',
+    'scale': '1920:-1',
+    'quality': '2',
+  },
+  {
+    'name': 'Medium Quality',
+    'scale': '1080:-1',
+    'quality': '6',
+  },
+  {
+    'name': 'Low Quality',
+    'scale': '640:-1',
+    'quality': '15',
+  },
+  {
+    'name': 'Lowest Quality',
+    'scale': '320:-1',
+    'quality': '31',
+  },
+];
