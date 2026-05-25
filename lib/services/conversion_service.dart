@@ -50,6 +50,7 @@ class ConversionService {
 
     _addTask(task);
 
+    String? ffmpegError;
     try {
       final success = await FFMpegService.convertAudio(
         inputPath: inputPath,
@@ -64,11 +65,17 @@ class ConversionService {
           _updateTask(task);
           onProgress?.call(task);
         },
-        onLog: (log) => AppLogger.info('FFmpeg: $log'),
+        onLog: (log) {
+          AppLogger.info('FFmpeg: $log');
+          // Capture FFmpeg error messages
+          if (log.contains('failed') || log.contains('error') || log.contains('Error')) {
+            ffmpegError = log;
+          }
+        },
       );
 
       if (!success) {
-        throw Exception('Conversion failed');
+        throw Exception('Conversion failed${ffmpegError != null ? ': $ffmpegError' : ''}');
       }
 
       // Update task on success

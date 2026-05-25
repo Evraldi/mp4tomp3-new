@@ -63,9 +63,14 @@ class FFMpegService {
           final success = ReturnCode.isSuccess(returnCode);
           if (!success) {
             final failStackTrace = await session.getFailStackTrace();
-            onLog('FFmpeg execution failed: ${await session.getOutput()}');
+            final output = await session.getOutput();
+            onLog('FFmpeg execution failed: $output');
             if (failStackTrace != null) {
               onLog('Stack trace: $failStackTrace');
+            }
+            if ((output?.contains('Output file does not contain any stream') ?? false) ||
+                (output?.contains('does not contain any stream') ?? false)) {
+              onLog('ERROR: The input video file does not contain an audio stream. Please select a video with audio.');
             }
           }
           completer.complete(success);
